@@ -27,6 +27,27 @@ export default function App() {
 
   const [methods, setMethods] = useState(["GCash", "Maya", "Bank", "Cash"]);
 
+useEffect(() => {
+  const existing = JSON.parse(localStorage.getItem("entries") || "[]");
+
+  if (existing.length === 0) {
+    const demoEntry = {
+      id: Date.now(),
+      title: "Sample Bill",
+      amount: 1000,
+      date: "2025-07-23",
+      paid: true,
+      category: "Utilities",
+      method: "GCash",
+      type: "BILLS",
+      status: "Paid",
+      notes: "",
+    };
+    localStorage.setItem("entries", JSON.stringify([demoEntry]));
+    console.log("✅ Seeded entry added.");
+  }
+}, []);
+
   useEffect(() => {
     const savedEntries = localStorage.getItem("entries");
     const savedCategories = localStorage.getItem("categories");
@@ -49,38 +70,84 @@ export default function App() {
     localStorage.setItem("methods", JSON.stringify(methods));
   }, [methods]);
 
-  const handleAddClick = () => {
-    setEditData(null);
-    setShowAddModal(true);
+useEffect(() => {
+  const storedCategories = JSON.parse(localStorage.getItem("categories")) || {
+    bills: [],
+    expenses: [],
+    savings: [],
   };
+  setCategories(storedCategories);
+}, []);
 
-  const handleSaveEntry = (entry) => {
-    if (editData) {
-      setEntries((prev) => prev.map((e) => (e.id === entry.id ? entry : e)));
-    } else {
-      setEntries((prev) => [...prev, { ...entry, id: Date.now() }]);
+
+useEffect(() => {
+  const saved = localStorage.getItem("entries");
+
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved).map((e) => ({
+        ...e,
+        paid: e.paid === true || e.paid === "true", // normalize to boolean
+      }));
+
+      setEntries(parsed); // set clean data to state
+      localStorage.setItem("entries", JSON.stringify(parsed)); // re-save normalized
+      console.log("✅ Normalized Entries:", parsed);
+    } catch (err) {
+      console.error("❌ Failed to parse entries from localStorage", err);
+      setEntries([]);
     }
-    setShowAddModal(false);
+  } else {
+    console.log("ℹ️ No entries in localStorage yet.");
+    setEntries([]);
+  }
+}, []);
+
+useEffect(() => {
+  console.log("✅ Final Entries After Load:", entries);
+}, [entries]);
+
+useEffect(() => {
+  // Uncomment to clear localStorage once
+  // localStorage.removeItem("entries");
+}, []);
+
+const handleAddClick = () => {
+  setEditData(null); // 🧼 clear previous edit data
+  setShowAddModal(true);
+};
+
+  const handleSaveEntry = (newEntry) => {
+  const cleanEntry = {
+    ...newEntry,
+    paid: newEntry.paid === true || newEntry.paid === "true",
   };
 
-  const handleEdit = (entry) => {
-    setEditData(entry);
-    setShowAddModal(true);
-  };
+  const updatedEntries = entries.some((e) => e.id === cleanEntry.id)
+    ? entries.map((e) => (e.id === cleanEntry.id ? cleanEntry : e))
+    : [...entries, cleanEntry];
+
+  setEntries(updatedEntries);
+  localStorage.setItem("entries", JSON.stringify(updatedEntries));
+};
+const handleEdit = (entry) => {
+  setEditData(entry);
+  setShowAddModal(true);
+};
 
   const handleDelete = (id) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
   };
 
-   const filteredEntries = entries.filter((e) => {
-    if (e.type !== activeTab) return false;
-    const entryDate = new Date(e.date);
-    return (
-      entryDate.getFullYear() === currentMonth.getFullYear() &&
-      entryDate.getMonth() === currentMonth.getMonth()
-    );
-  });
+const filteredEntries = entries.filter((e) => {
+  if (e.type?.toUpperCase() !== activeTab) return false;
 
+  const entryDate = new Date(e.date);
+  return (
+    entryDate.getFullYear() === currentMonth.getFullYear() &&
+    entryDate.getMonth() === currentMonth.getMonth()
+  );
+});
 
 const upcomingEntries = filteredEntries
   .filter((entry) => !entry.paid)
@@ -110,12 +177,40 @@ const nextTitle = nextEntry?.title || "";
       )
     : null;
 
-  const totalPaid = filteredEntries
-    .filter((e) => e.paid)
-    .reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
-  const totalUnpaid = filteredEntries
-    .filter((e) => !e.paid)
-    .reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
+const totalPaid = filteredEntries
+  .filter((e) => e.paid === true)
+  .reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
+
+const totalUnpaid = Array.isArray(filteredEntries)
+  ? filteredEntries
+      .filter((e) => e.paid === false || e.paid === "false" || !e.paid)
+      .reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0)
+  : 0;
+
+const handleModalClose = () => {
+  setShowAddModal(false);
+  setEditData(null);
+};
+
+console.log("PAID VALUES:", entries.map(e => ({
+  id: e.id,
+  title: e.title,
+  paid: e.paid,
+  type: typeof e.paid
+})));
+
+console.log("✅ Filtered Entries for UNPAID:", filteredEntries);
+
+const getCurrentCategories = () => {
+  if (activeTab === "bills") return billCategories;
+  if (activeTab === "expenses") return expenseCategories;
+  if (activeTab === "savings") return savingsCategories;
+  return [];
+};
+
+const handleManageCategories = () => {
+  setShowCategoryModal(true);
+};
 
 
   return (
@@ -180,7 +275,6 @@ const nextTitle = nextEntry?.title || "";
     <div className="text-lg font-light tracking-wide text-center">SUMMARY</div>
   </div>
 
-
 {/* Paid and Left to Pay Totals */}
   <div className="bg-white p-6 text-[#7C5E42] font-[Century Gothic] text-sm flex flex-col gap-1 items-center">
     <div className="text-center text-base font-light">
@@ -191,7 +285,6 @@ const nextTitle = nextEntry?.title || "";
     </div>
   </div>
 </div>
-
 
 {/* PIE CHART AND TABLE */}
 <div className="h-full flex items-start mt-0">
@@ -235,36 +328,33 @@ const nextTitle = nextEntry?.title || "";
 
      {/* Modals */}
       {showAddModal && (
-        <AddEntryModal
-          type={activeTab}
-          categories={categories[activeTab] || []}
-          methods={methods}
-          onClose={() => setShowAddModal(false)}
-          onSave={handleSaveEntry}
-          onManageCategories={(updatedList) =>
-           setCategories((prev) => ({
-              ...prev,
-              [activeTab]: updatedList || [],
-            }))
-          }
-          onManageMethods={(updated) => setMethods(updated || [])}
-          editData={editData}
-        />
-      )}
+  <AddEntryModal
+  type={activeTab}
+  categories={categories[activeTab] || []}
+    methods={methods}
+    onSave={handleSaveEntry}         // ✅ use handleSaveEntry, not handleSave
+    onClose={handleModalClose}       // ✅ make sure this is defined
+    onManageCategories={handleManageCategories}
+    editData={editData}
+  />
+)}
 
        {showCategoryModal && (
-        <CategoryManagerModal
-          type={activeTab}
-          categories={categories[activeTab] || []}
-          onClose={() => setShowCategoryModal(false)}
-          onSave={(updatedList) =>
-            setCategories((prev) => ({
-              ...prev,
-              [activeTab]: updatedList || [],
-            }))
-          }
-        />
-      )}
+  <CategoryManagerModal
+  type={activeTab}
+  categories={categories[activeTab] || []}
+  onClose={() => setShowCategoryModal(false)}
+  onSave={(updatedList) => {
+    const updated = {
+      ...categories,
+      [activeTab]: updatedList || [],
+    };
+    setCategories(updated);
+    localStorage.setItem("categories", JSON.stringify(updated));
+    setShowCategoryModal(false);
+  }}
+  />
+)}
     <div>
 </div>
 </div>
