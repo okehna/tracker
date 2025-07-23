@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import Century Gothic via @font-face if needed (local) */
+@font-face {
+  font-family: 'Century Gothic';
+  src: local('Century Gothic'), local('CenturyGothic');
+  font-weight: normal;
+}
+
+@font-face {
+  font-family: 'Century Gothic';
+  src: local('Century Gothic Bold'), local('CenturyGothic-Bold');
+  font-weight: bold;
+}
+
+body {
+  font-family: 'Century Gothic', sans-serif;
+  text-transform: uppercase;
+  font-weight: 500; /* thin-ish appearance */
+  background-color: #f7f2ec;
+  color: #333;
+}
+
+/* Optional scrollbar styling (cleaner scroll for modals/lists) */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #d1bfa9;
+  border-radius: 3px;
+}
+
+@media print {
+  .mobile-page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+
+  #export-area {
+    padding: 0 !important;
+    margin: 0 auto;
+  }
+}
