@@ -8,6 +8,9 @@ import PieChartSummary from "./components/PieChartSummary";
 import { exportToPDF } from "./utils/pdfExport";
 import "./index.css";
 
+
+
+
 const tabs = ["BILLS", "EXPENSES", "SAVINGS"];
 
 export default function App() {
@@ -28,25 +31,44 @@ export default function App() {
   const [methods, setMethods] = useState(["GCash", "Maya", "Bank", "Cash"]);
 
 useEffect(() => {
-  const existing = JSON.parse(localStorage.getItem("entries") || "[]");
+    const saved = localStorage.getItem("entries");
 
-  if (existing.length === 0) {
-    const demoEntry = {
-      id: Date.now(),
-      title: "Sample Bill",
-      amount: 1000,
-      date: "2025-07-23",
-      paid: true,
-      category: "Utilities",
-      method: "GCash",
-      type: "BILLS",
-      status: "Paid",
-      notes: "",
-    };
-    localStorage.setItem("entries", JSON.stringify([demoEntry]));
-    console.log("✅ Seeded entry added.");
-  }
-}, []);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const normalized = parsed.map((e) => ({
+          ...e,
+          paid: e.paid === true || e.paid === "true",
+          status: e.paid === true || e.paid === "true" ? "Paid" : "Unpaid",
+        }));
+
+        console.log("✅ Normalized Entries:", normalized);
+        setEntries(normalized);
+        localStorage.setItem("entries", JSON.stringify(normalized));
+      } catch (err) {
+        console.warn("⚠️ Failed to normalize entries:", err);
+        setEntries([]);
+      }
+    } else {
+      const seed = [
+        {
+          id: Date.now(),
+          type: "Bill",
+          title: "Sample Bill",
+          amount: 1000,
+          category: "Utilities",
+          method: "GCash",
+          date: new Date().toISOString().split("T")[0],
+          paid: false,
+          status: "Unpaid",
+          notes: "",
+        },
+      ];
+      setEntries(seed);
+      localStorage.setItem("entries", JSON.stringify(seed));
+      console.log("✅ Seeded entry added.");
+    }
+  }, []);
 
   useEffect(() => {
     const savedEntries = localStorage.getItem("entries");
@@ -178,14 +200,14 @@ const nextTitle = nextEntry?.title || "";
     : null;
 
 const totalPaid = filteredEntries
-  .filter((e) => e.paid === true)
+  .filter((e) => e.paid)
   .reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
 
-const totalUnpaid = Array.isArray(filteredEntries)
-  ? filteredEntries
-      .filter((e) => e.paid === false || e.paid === "false" || !e.paid)
-      .reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0)
-  : 0;
+
+const totalUnpaid = filteredEntries
+  .filter((e) => !e.paid)
+  .reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
+
 
 const handleModalClose = () => {
   setShowAddModal(false);

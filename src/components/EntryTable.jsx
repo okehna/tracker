@@ -43,13 +43,13 @@ export default function EntryTable({ entries, onEdit, onDelete }) {
                   })}
                 </div>
                 <div>{entry.method}</div>
-                <div>
-                  {entry.status === "paid" ? (
-                    <span className="text-[#C7A17A] font-semibold">Paid</span>
-                  ) : (
-                    <span className="text-[#7C5E42] font-semibold">Unpaid</span>
-                  )}
-                </div>
+<div>
+  {entry.paid ? (
+    <span className="text-[#C7A17A] font-semibold">Paid</span>
+  ) : (
+    <span className="text-[#7C5E42] font-semibold">Unpaid</span>
+  )}
+</div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => onEdit(entry)}
